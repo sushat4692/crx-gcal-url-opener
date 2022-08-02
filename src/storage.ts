@@ -8,6 +8,7 @@ export type ScheduledEvent = {
 
 const KEY_EVETNS = "events_1";
 const KEY_OPENED = "opened";
+const KEY_OFFSET = "offset";
 
 export async function upsertEvent(
   id: string,
@@ -45,4 +46,18 @@ function loadOpenedFlags(): Promise<Set<string>> {
   return chrome.storage.local
     .get([KEY_OPENED])
     .then(({ [KEY_OPENED]: value }) => new Set(JSON.parse(value ?? "[]")));
+}
+
+export async function upsertOffset(
+  newValue: number
+): Promise<void> {
+  return chrome.storage.local.set({
+    [KEY_OFFSET]: newValue,
+  });
+}
+
+export async function getOffset(): Promise<number> {
+  return chrome.storage.local
+    .get([KEY_OFFSET])
+    .then(({ [KEY_OFFSET]: value }) => value ? value - 0 : 1);
 }

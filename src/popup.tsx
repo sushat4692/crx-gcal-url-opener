@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { getAuthToken } from "./auth";
 import { AppBar } from "./components/AppBar";
 import { EventList } from "./components/EventList";
+import { Offset } from "./components/Offset";
 
 type Event = {
   id: string;
@@ -103,6 +104,7 @@ function App() {
       </Container>
       {isAuthenticated ? (
         <Box my={2}>
+          <Offset onRefresh={handleRefresh} />
           <EventList subheader={"Events on today"} events={eventsOnToday} />
           <EventList subheader={"Upcoming events"} events={upcomingEvents} />
         </Box>

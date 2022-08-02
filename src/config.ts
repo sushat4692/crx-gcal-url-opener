@@ -1,4 +1,5 @@
 import getUrls from "get-urls";
+import {getOffset} from './storage'
 
 type URLRules = typeof urlRules;
 type URLRule = URLRules[number];
@@ -26,7 +27,7 @@ const urlRules = [
 
 export async function loadConfig(): Promise<Config> {
   return new Config({
-    offset: 1000 * 60 * 1,
+    offset: (await getOffset()) * 1000 * 60,
     urlRules,
     pollInterval: 1,
   });
@@ -41,6 +42,10 @@ class Config {
     this.offset = init.offset;
     this.urlRules = init.urlRules;
     this.pollInterval = init.pollInterval;
+  }
+
+  updateOffset(offset: number) {
+    this.offset = offset * 1000 * 60;
   }
 
   extractValidUrl(event: { hangoutLink?: string; description?: string }): {
