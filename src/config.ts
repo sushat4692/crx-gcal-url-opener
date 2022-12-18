@@ -12,12 +12,22 @@ type SerializedConfig = {
 
 const urlRules = [
   {
-    test: /^https:\/\/(?:[^\.]+\.)?zoom\.us\/j\//,
+    // j = join, w = webinar
+    // https://support.zoom.us/hc/en-us/articles/115004954946
+    test: /^https:\/\/(?:[^\.]+\.)?zoom\.us\/[jw]\//,
     provider: "Zoom Meetings",
   },
   {
-    test: /https:\/\/teams\.microsoft\.com\/l\/meetup-join\//,
+    test: /^https:\/\/teams\.microsoft\.com\/l\/meetup-join\//,
     provider: "Microsoft Teams",
+  },
+  {
+    test: /^https:\/\/\d+.webex.com\/\d+\/j.php/,
+    provider: "WebEx",
+  },
+  {
+    test: /^https:\/\/chime.aws\//,
+    provider: "Amazon Chime",
   },
   {
     test: /^https:\/\/meet\.google\.com\//,
@@ -48,7 +58,11 @@ class Config {
     this.offset = offset * 1000 * 60;
   }
 
-  extractValidUrl(event: { hangoutLink?: string; description?: string }): {
+  extractValidUrl(event: {
+    hangoutLink?: string;
+    description?: string;
+    conferenceData?: any;
+  }): {
     url: string;
     rule: URLRule;
   } | null {
@@ -59,6 +73,22 @@ class Config {
       for (const url of urls) {
         if (rule.test.test(url)) {
           return { rule, url };
+        }
+      }
+    }
+    if (event.conferenceData) {
+      const videoEntryPoint = event.conferenceData.entryPoints?.filter(
+        (ep: any) => ep.entryPointType === "video"
+      );
+      if (videoEntryPoint?.length) {
+        const matchedRule = urlRules.filter((rule) =>
+          rule.test.test(videoEntryPoint[0].uri)
+        );
+        if (matchedRule.length) {
+          return {
+            url: videoEntryPoint[0].uri,
+            rule: matchedRule[0],
+          };
         }
       }
     }

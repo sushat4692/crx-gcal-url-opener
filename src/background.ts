@@ -10,17 +10,16 @@ import {
   upsertEvent,
 } from "./storage";
 
-type ListAccountRequest = { type: "ListAccountRequest" };
-type SignInRequest = { type: "SignInRequest" };
-type SignOutRequest = { type: "SignOutRequest" };
-type RefreshRequest = { type: "RefreshRequest" };
-type ListReminders = { type: "ListReminders" };
 type IncomingMessage =
-  | ListAccountRequest
-  | SignInRequest
-  | SignOutRequest
-  | RefreshRequest
-  | ListReminders;
+  | { type: "ListAccountRequest" }
+  | { type: "SignInRequest" }
+  | { type: "SignOutRequest" }
+  | { type: "RefreshRequest" }
+  | { type: "ListReminders" };
+
+const Alerms = {
+  refetch: "CRX_GCAL_REFRESH",
+};
 
 let loading = Promise.resolve();
 
@@ -44,7 +43,7 @@ async function dispatch(message: IncomingMessage) {
       return;
     }
     case "RefreshRequest":
-      return loading.then(() => startWatching);
+      return loading.then(() => startWatching());
     case "ListReminders": {
       return [...(await getAllEvents()).values()];
     }
@@ -93,7 +92,11 @@ async function startWatching() {
     });
   await chrome.action.setBadgeText({
     text: String(
-      matched.filter((e) => isSameDay(new Date(e.startsAt), new Date())).length
+      matched.filter(
+        (e) =>
+          isSameDay(new Date(e.startsAt), new Date()) &&
+          new Date(e.startsAt).getTime() > Date.now()
+      ).length
     ),
   });
   for (const event of matched) {
@@ -121,7 +124,7 @@ async function init() {
   if (authToken) {
     loading = startWatching();
   }
-  await chrome.alarms.create("CRX_GCAL_REFRESH", {
+  await chrome.alarms.create(Alerms.refetch, {
     periodInMinutes: config.pollInterval,
   });
 }
@@ -132,13 +135,17 @@ chrome.runtime.onMessage.addListener((message, _sender, callback) => {
 });
 chrome.alarms.onAlarm.addListener(async (alerm) => {
   switch (alerm.name) {
-    case "CRX_GCAL_REFRESH": {
+    case Alerms.refetch: {
       loading = startWatching();
       return;
     }
     default: {
       const event = await getEvent(alerm.name);
-      if (!event || (await isOpened(alerm.name))) {
+      if (
+        !event ||
+        (await isOpened(alerm.name)) ||
+        new Date(event.startsAt).getTime() < Date.now()
+      ) {
         return;
       }
       await markAsOpened(alerm.name);
